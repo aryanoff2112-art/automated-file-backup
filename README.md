@@ -139,8 +139,8 @@ Excluded files are counted in the `skipped` stat, not silently dropped.
 ## Installation
 
 ```bash
-git clone https://github.com/OWNER/REPO.git
-cd REPO
+git clone https://github.com/aryanoff2112-art/automated-file-backup.git
+cd automated-file-backup
 pip install -e .
 ```
 
@@ -162,8 +162,8 @@ top of `backup.py`:
 SOURCE_DIR = r"/path/to/source"
 DESTINATION_DIR = r"/path/to/destination"
 
-BACKUP_TIME = "00:00"        # for the "schedule" command
-RETENTION_DAYS = 30          # None to keep backups forever
+BACKUP_TIME = "00:00"       
+RETENTION_DAYS = 30          
 CHECKSUM_ALGO = "sha256"
 
 EXCLUDED_DIRS = {".git", "__pycache__", "node_modules"}
@@ -176,37 +176,27 @@ are on the roadmap — see Limitations below.)*
 ## CLI usage
 
 ```bash
-# Run a backup right now
+
 backupforge backup
 
-# Preview what a backup would do without touching the filesystem
 backupforge backup --dry-run
 
-# Use exact content hashing instead of size+mtime to detect changes
 backupforge backup --mode checksum
 
-# List all backups and their manifest summaries
 backupforge list
 
-# Verify a backup's integrity against its stored checksums
 backupforge verify backup_2026-09-01_00-00-00
 
-# Restore an entire backup back into SOURCE_DIR (prompts before overwriting)
 backupforge restore backup_2026-09-01_00-00-00
 
-# Restore into a different directory instead of the live source
 backupforge restore backup_2026-09-01_00-00-00 --target /tmp/recovered
 
-# Restore only specific files
 backupforge restore backup_2026-09-01_00-00-00 --files sub/notes.txt
 
-# Skip all confirmation prompts (for scripted use)
 backupforge restore backup_2026-09-01_00-00-00 --force
 
-# Delete backups older than RETENTION_DAYS
 backupforge prune
 
-# Run the daily scheduler loop (also the default with no subcommand)
 backupforge schedule
 ```
 
@@ -275,8 +265,8 @@ Useful for wiring into cron, Windows Task Scheduler, or a CI pipeline.
 ## Testing
 
 ```bash
-pytest                                          # run the suite
-pytest --cov=backup --cov-report=term-missing   # with coverage
+pytest                                         
+pytest --cov=backup --cov-report=term-missing   
 ```
 
 53 tests cover checksum generation, exclusions/`.backupignore`, both
