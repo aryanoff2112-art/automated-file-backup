@@ -6,7 +6,6 @@ Incremental, verifiable backups using hardlink snapshots — every backup
 is a complete, browsable directory, but unchanged files cost almost no
 extra disk space.
 
-*(Replace `OWNER/REPO` in the badge URL above once this is pushed to GitHub.)*
 
 ## How it works
 
