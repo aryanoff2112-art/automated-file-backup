@@ -8,6 +8,7 @@ import json
 import sys
 import time
 import logging
+
 import schedule
 
 SOURCE_DIR = r"/path/to/source"
@@ -15,9 +16,9 @@ DESTINATION_DIR = r"/path/to/destination"
 
 BACKUP_TIME = "00:00"
 
-RETENTION_DAYS = 30        
+RETENTION_DAYS = 30          
 CHECKSUM_ALGO = "sha256"
-CHUNK_SIZE = 1024 * 1024   
+CHUNK_SIZE = 1024 * 1024    
 
 EXCLUDED_DIRS = {".git", "__pycache__", "node_modules"}
 EXCLUDED_EXTENSIONS = {".tmp", ".log"}
@@ -34,8 +35,7 @@ logging.basicConfig(
 )
 
 def validate_directories(source_dir, destination_dir):
-    """Raise ValueError if destination_dir is inside source_dir (which would
-    make the backup eventually walk into and back up its own backups)."""
+
     source_real = os.path.realpath(source_dir)
     destination_real = os.path.realpath(destination_dir)
 
@@ -87,7 +87,6 @@ def file_checksum(path, algo=CHECKSUM_ALGO):
             h.update(chunk)
     return h.hexdigest()
 
-
 def files_are_equivalent(src_path, dst_path, mode):
 
     try:
@@ -117,7 +116,6 @@ def find_previous_backup(destination_dir):
     if not candidates:
         return None
     return max(candidates, key=os.path.getmtime)
-
 
 def cleanup_stale_incomplete_backups(destination_dir):
 
@@ -316,7 +314,7 @@ def run_backup(source_dir=None, destination_dir=None, dry_run=False, mode="fast"
 
         os.rename(working_dir, destination)
 
-    except Exception as error:  # noqa: BLE001 -- a genuine crash, not a per-file error
+    except Exception as error: 
         logging.error(f"Backup crashed mid-run: {error}")
         print(f"Backup crashed: {error}")
         print(f"Incomplete data left at: {working_dir} (will be cleaned up on next run)")
@@ -337,7 +335,7 @@ def run_backup(source_dir=None, destination_dir=None, dry_run=False, mode="fast"
     return {"status": status, "stats": stats, "backup_dir": destination}
 
 def verify_backup(destination_dir, backup_name):
-    """Returns True if every checksummed file matches, False otherwise."""
+
     backup_dir = os.path.join(destination_dir, backup_name)
     manifest = load_manifest(backup_dir)
 
@@ -407,7 +405,7 @@ def iter_backup_files(backup_dir):
 
 def restore_backup(destination_dir, backup_name, files=None, target=None, force=False,
                     source_dir=None, prompt=input):
-    """Returns True on a clean, complete restore; False otherwise."""
+
     source_dir = SOURCE_DIR if source_dir is None else source_dir
     backup_dir = os.path.join(destination_dir, backup_name)
 
@@ -531,10 +529,10 @@ def main(argv=None):
                 return 0
             return 1
 
-        validate_directories(SOURCE_DIR, DESTINATION_DIR)
-        schedule.every().day.at(BACKUP_TIME).do(run_backup)
-        print(f"Automated backup scheduled daily at {BACKUP_TIME}")
-        while True:
+        validate_directories(SOURCE_DIR, DESTINATION_DIR)  
+        schedule.every().day.at(BACKUP_TIME).do(run_backup) 
+        print(f"Automated backup scheduled daily at {BACKUP_TIME}") 
+        while True:  
             schedule.run_pending()
             time.sleep(1)
 
@@ -542,5 +540,5 @@ def main(argv=None):
         print(f"Configuration error: {error}")
         return 2
 
-if __name__ == "__main__":
+if __name__ == "__main__":  
     sys.exit(main())

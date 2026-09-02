@@ -6,7 +6,7 @@ import json
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-import backup  
+import backup 
 
 @pytest.fixture
 def source(tmp_path):
@@ -121,7 +121,7 @@ def test_second_backup_hardlinks_unchanged_files(source, destination):
     write(source / "a.txt", "hello")
     backup.run_backup(source_dir=str(source), destination_dir=str(destination))
 
-    time.sleep(1.01)  
+    time.sleep(1.01) 
     result = backup.run_backup(source_dir=str(source), destination_dir=str(destination))
 
     assert result["status"] == "success"
@@ -139,6 +139,7 @@ def test_changed_file_is_recopied_not_linked(source, destination):
     assert r2["stats"]["linked"] == 0
     content = open(os.path.join(r2["backup_dir"], "a.txt")).read()
     assert content == "version two"
+   
     original = open(os.path.join(r1["backup_dir"], "a.txt")).read()
     assert original == "version one"
 
@@ -250,6 +251,99 @@ def test_verify_fails_on_tampered_file(source, destination):
 
 def test_verify_missing_backup_returns_false(destination):
     assert backup.verify_backup(str(destination), "backup_does_not_exist") is False
+
+def test_verify_reports_missing_file(source, destination):
+    write(source / "a.txt", "hello")
+    result = backup.run_backup(source_dir=str(source), destination_dir=str(destination))
+    backup_name = os.path.basename(result["backup_dir"])
+
+    os.remove(os.path.join(result["backup_dir"], "a.txt"))
+
+    assert backup.verify_backup(str(destination), backup_name) is False
+
+def test_list_backups_empty_destination(destination):
+    assert backup.list_backups(str(destination)) == []
+
+def test_list_backups_no_destination_dir_at_all(tmp_path):
+    never_created = tmp_path / "nope"
+    assert backup.list_backups(str(never_created)) == []
+
+def test_checksum_mismatch_after_copy_is_treated_as_failure(source, destination, monkeypatch):
+    write(source / "a.txt", "hello")
+
+    real_checksum = backup.file_checksum
+    call_count = {"n": 0}
+
+    def flaky_checksum(path, algo=backup.CHECKSUM_ALGO):
+        call_count["n"] += 1
+
+        if call_count["n"] == 2:
+            return "0" * 64
+        return real_checksum(path, algo)
+
+    monkeypatch.setattr(backup, "file_checksum", flaky_checksum)
+
+    result = backup.run_backup(source_dir=str(source), destination_dir=str(destination))
+
+    assert result["stats"]["failed"] == 1
+    assert result["stats"]["copied"] == 0
+
+def test_permission_error_during_copy_is_recorded_as_failed(source, destination, monkeypatch):
+    write(source / "a.txt", "hello")
+
+    def raise_permission_error(*args, **kwargs):
+        raise PermissionError("simulated permission denied")
+
+    monkeypatch.setattr(backup.shutil, "copy2", raise_permission_error)
+
+    result = backup.run_backup(source_dir=str(source), destination_dir=str(destination))
+
+    assert result["stats"]["failed"] == 1
+    assert result["status"] == "partial_failure"
+
+def test_restore_permission_error_is_recorded_as_failed(source, destination, tmp_path, monkeypatch):
+    write(source / "a.txt", "hello")
+    result = backup.run_backup(source_dir=str(source), destination_dir=str(destination))
+    backup_name = os.path.basename(result["backup_dir"])
+
+    restore_target = tmp_path / "restored"
+    restore_target.mkdir()
+
+    def raise_permission_error(*args, **kwargs):
+        raise PermissionError("simulated permission denied")
+
+    monkeypatch.setattr(backup.shutil, "copy2", raise_permission_error)
+
+    ok = backup.restore_backup(str(destination), backup_name, target=str(restore_target), force=True)
+
+    assert ok is False
+
+def test_stale_incomplete_backup_removal_failure_is_logged(source, destination, monkeypatch):
+    os.makedirs(destination, exist_ok=True)
+    stale = os.path.join(str(destination), ".backup_2020-01-01_00-00-00.incomplete")
+    os.makedirs(stale)
+    write(source / "a.txt", "hello")
+
+    def raise_oserror(*args, **kwargs):
+        raise OSError("simulated removal failure")
+
+    monkeypatch.setattr(backup.shutil, "rmtree", raise_oserror)
+
+    result = backup.run_backup(source_dir=str(source), destination_dir=str(destination))
+    assert result["status"] in ("success", "partial_failure")
+
+def test_prune_removal_failure_is_logged_not_raised(source, destination, monkeypatch):
+    write(source / "a.txt", "hello")
+    result = backup.run_backup(source_dir=str(source), destination_dir=str(destination))
+    old_time = time.time() - (40 * 86400)
+    os.utime(result["backup_dir"], (old_time, old_time))
+
+    def raise_oserror(*args, **kwargs):
+        raise OSError("simulated removal failure")
+
+    monkeypatch.setattr(backup.shutil, "rmtree", raise_oserror)
+
+    backup.prune_old_backups(str(destination), retention_days=30)  
 
 def test_restore_full_backup_into_target(source, destination, tmp_path):
     write(source / "a.txt", "hello")
